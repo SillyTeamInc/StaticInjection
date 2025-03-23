@@ -103,6 +103,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    std::string targetFilename = std::filesystem::path(target).filename().string();
+
     std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(file), {});
     auto binary = LIEF::PE::Parser::parse(buffer);
     auto imports = binary->imports();
@@ -128,7 +130,7 @@ int main(int argc, char* argv[])
         spdlog::info("Exported functions:");
         for (const auto& exportEntry : binary->exported_functions())
         {
-            spdlog::info("  Export - {}::{} ({:X})", exportEntry.name(), exportEntry.address());
+            spdlog::info("  Export - {}::{} ({:X})", targetFilename, exportEntry.name(), exportEntry.address());
         }
         if (binary->exported_functions().empty())
         {
