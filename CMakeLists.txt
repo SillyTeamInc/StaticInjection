@@ -18,6 +18,24 @@ CPMAddPackage(
         GIT_TAG main
 )
 
+set(IS_DEBUG_BUILD CMAKE_BUILD_TYPE STREQUAL "Debug")
+
+add_link_options(
+        $<$<CONFIG:Debug>:/INCREMENTAL>
+        $<$<CONFIG:Debug>:/DEBUG>
+        $<$<CONFIG:Release>:/Zi>
+        $<$<CONFIG:Release>:/INCREMENTAL:NO>
+        $<$<CONFIG:Release>:/LTCG>
+        $<$<CONFIG:Release>:/DEBUG>
+)
+
+add_compile_options(
+        $<$<CONFIG:Debug>:/Zi>
+        $<$<CONFIG:Release>:/Zi>
+        $<$<CONFIG:Release>:/O2>
+        $<$<CONFIG:Release>:/GL>
+)
+
 set_target_properties(LIB_LIEF PROPERTIES UNITY_BUILD FALSE)
 
 include_directories(src)
@@ -32,7 +50,7 @@ add_executable(StaticInjection src/main.cpp
         src/arg_parser.cpp
         src/arg_parser.hpp)
 
-target_link_libraries(StaticInjection PUBLIC lief_spdlog magic_enum LIEF::LIEF)
+target_link_libraries(StaticInjection PUBLIC lief_spdlog magic_enum LIEF::LIEF Wintrust.lib)
 
 target_precompile_headers(StaticInjection PRIVATE
         "$<$<COMPILE_LANGUAGE:CXX>:<src/pch.hpp$<ANGLE-R>>"

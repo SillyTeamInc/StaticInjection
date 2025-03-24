@@ -4,11 +4,32 @@
 
 #include "util.hpp"
 
+#include <softpub.h>
+
+
 void util::enable_virtual_terminal()  {
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD mode;
     GetConsoleMode(hOut, &mode);
     SetConsoleMode(hOut, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+}
+
+void util::write(const std::string& text)
+{
+    std::cout << text;
+    std::cout.flush();
+}
+
+void util::clear_current_console_line()
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo(hConsole, &csbi);
+    DWORD written;
+    COORD coord = { 0, csbi.dwCursorPosition.Y };
+    DWORD size = csbi.dwSize.X - csbi.dwCursorPosition.X;
+    FillConsoleOutputCharacterA(hConsole, ' ', size, coord, &written);
+    SetConsoleCursorPosition(hConsole, coord);
 }
 
 DWORD util::offset_from_rva(DWORD rva, PIMAGE_SECTION_HEADER header)
@@ -126,4 +147,45 @@ std::string util::get_executable_name()
     GetModuleFileNameA(nullptr, buffer, MAX_PATH);
     std::string fullPath(buffer);
     return std::filesystem::path(fullPath).filename().string();
+}
+
+bool util::has_code_signature(const std::string& filePath)
+{
+    if (!file_exists(filePath))
+    {
+        spdlog::error("File does not exist: {}", filePath);
+        return false;
+    }
+
+    HANDLE hFile = CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        spdlog::error("Failed to open file: {}", filePath);
+        return false;
+    }
+
+    WINTRUST_FILE_INFO fileInfo = {};
+    fileInfo.cbStruct = sizeof(WINTRUST_FILE_INFO);
+    fileInfo.pcwszFilePath = std::wstring(filePath.begin(), filePath.end()).c_str();
+    fileInfo.hFile = hFile;
+    fileInfo.pgKnownSubject = nullptr;
+
+    GUID guidAction = WINTRUST_ACTION_GENERIC_VERIFY_V2;
+    WINTRUST_DATA trustData = {};
+    trustData.cbStruct = sizeof(WINTRUST_DATA);
+    trustData.dwUIChoice = WTD_UI_NONE;
+    trustData.fdwRevocationChecks = WTD_REVOKE_NONE;
+    trustData.dwUnionChoice = WTD_CHOICE_FILE;
+    trustData.pFile = &fileInfo;
+    trustData.dwStateAction = WTD_STATEACTION_VERIFY;
+    trustData.dwProvFlags = WTD_SAFER_FLAG;
+    trustData.hWVTStateData = nullptr;
+
+    LONG lStatus = WinVerifyTrust(nullptr, &guidAction, &trustData);
+
+    trustData.dwStateAction = WTD_STATEACTION_CLOSE;
+    WinVerifyTrust(nullptr, &guidAction, &trustData);
+    CloseHandle(hFile);
+
+    return (lStatus == ERROR_SUCCESS);
 }

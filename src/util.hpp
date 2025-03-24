@@ -11,6 +11,9 @@
 class util {
 public:
     static void enable_virtual_terminal();
+    static void write(const std::string& text);
+    static void clear_current_console_line();
+
     static DWORD offset_from_rva(DWORD rva, PIMAGE_SECTION_HEADER header);
     static DWORD rva_from_offset(DWORD offset, PIMAGE_SECTION_HEADER header);
 
@@ -27,4 +30,5 @@ public:
     static std::pair<std::string, std::string> split_string_once(const std::string& str, const std::string& delimiter);
 
     static std::string get_executable_name();
+    static bool has_code_signature(const std::string& filePath);
 };

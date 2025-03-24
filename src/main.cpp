@@ -96,17 +96,59 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    std::ifstream file(target, std::ios::binary);
-    if (!file.is_open())
+    HANDLE hFile = CreateFileA(target.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE)
     {
         spdlog::critical("Failed to open the target file!");
         return 1;
     }
 
+    DWORD fileSize = GetFileSize(hFile, nullptr);
+    if (fileSize == INVALID_FILE_SIZE)
+    {
+        CloseHandle(hFile);
+        spdlog::critical("Failed to get file size!");
+        return 1;
+    }
+
     std::string targetFilename = std::filesystem::path(target).filename().string();
 
-    std::vector<uint8_t> buffer(std::istreambuf_iterator<char>(file), {});
+    bool signedTarget = util::has_code_signature(target);
+    if (signedTarget)
+    {
+        spdlog::warn("THE TARGET FILE IS SIGNED!");
+        spdlog::warn("Modifying a signed file may cause the signature to be invalidated.");
+        spdlog::warn("We are NOT responsible for any issues that may arise from this.");
+        spdlog::warn("\033[31mTHIS MAY MAKE THE FILE UNSIGNED OR FAIL TO LOAD.\033[0m");
+    }
+
+    std::vector<uint8_t> buffer(fileSize);
+    DWORD bytesRead = 0;
+
+    if (!signedTarget)
+    {
+        util::clear_current_console_line();
+        util::write("Reading target file: " + targetFilename + "\r");
+    }
+
+    ReadFile(hFile, buffer.data(), fileSize, &bytesRead, nullptr);
+    CloseHandle(hFile);
+
+    if (bytesRead != fileSize)
+    {
+        spdlog::critical("Failed to read the entire file!");
+        return 1;
+    }
+
+    if (!signedTarget)
+    {
+        util::clear_current_console_line();
+        util::write("Parsing target file: " + targetFilename + "\r");
+    }
+
     auto binary = LIEF::PE::Parser::parse(buffer);
+    if (!signedTarget) util::clear_current_console_line();
+
     auto imports = binary->imports();
 
     if (action == "list")
@@ -140,6 +182,12 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    if (!parser.has_arg("symbol"))
+    {
+        spdlog::error("No symbol specified! Use --symbol:DLL_PATH::FUNCTION_NAME to specify the DLL and function!!");
+        return 1;
+    }
+
     if (!parser.has_arg("save")) {
         std::string saveFileName = std::filesystem::path(target).filename().string();
         std::string extension = saveFileName.substr(saveFileName.find_last_of("."));
@@ -170,18 +218,11 @@ int main(int argc, char* argv[])
     std::string dllPath = dllAndFunction.first;
     std::string functionName = dllAndFunction.second;
 
-    if (!parser.has_arg("symbol"))
-    {
-        spdlog::error("No symbol specified! Use --symbol:DLL_PATH::FUNCTION_NAME to specify the DLL and function!!");
-        return 1;
-    }
-
     if (dllPath.empty() || functionName.empty())
     {
         spdlog::error("Invalid DLL and function format! Use 'DLL_PATH::FUNCTION_NAME'.");
         return 1;
     }
-
 
     if (action == "remove")
     {
