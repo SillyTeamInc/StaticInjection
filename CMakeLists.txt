@@ -32,7 +32,6 @@ add_link_options(
 add_compile_options(
         $<$<CONFIG:Debug>:/Zi>
         $<$<CONFIG:Release>:/Zi>
-        $<$<CONFIG:Release>:/O2>
         $<$<CONFIG:Release>:/GL>
 )
 
