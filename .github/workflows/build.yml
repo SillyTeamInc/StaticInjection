@@ -38,17 +38,15 @@ jobs:
         mkdir artifacts
         cp build/*.exe artifacts/ || echo "No exe files found in root build dir"
         cp build/*.pdb artifacts/ || echo "No pdb files found in root build dir"
-        cp build/src/*.exe artifacts/ || echo "No exe files found in src build dir"
-        cp build/src/*.pdb artifacts/ || echo "No pdb files found in src build dir"
 
-#    - name: create release
-#      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-#      id: create_release
-#      uses: softprops/action-gh-release@v1
-#      with:
-#        name: Release ${{ github.sha }}
-#        tag_name: v${{ github.run_number }}
-#        files: artifacts/*
-#        generate_release_notes: true
-#      env:
-#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: create release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+      id: create_release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ github.sha }}
+        tag_name: v${{ github.run_number }}
+        files: artifacts/*
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

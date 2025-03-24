@@ -12,6 +12,8 @@ CPMAddPackage(
         VERSION 0.9.5
 )
 
+set(LIEF_EXAMPLES FALSE CACHE BOOL "Build examples" FORCE)
+
 CPMAddPackage(
         NAME LIEF
         GITHUB_REPOSITORY lief-project/LIEF
